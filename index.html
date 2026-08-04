@@ -68,7 +68,12 @@ async function loadCatalog(filter='movies'){
 async function runSearch(query){
  const q=String(query||'').trim();activeFilter='search';$('#notice').classList.remove('show');$('#emptyState').classList.add('hidden');$('#sectionTitle').textContent=q?`نتائج البحث عن: ${q}`:'ابحث في مكتبة El-Nemr TV';
  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));if(!q){catalog=[];grid.innerHTML='';$('#resultCount').textContent='اكتب اسم الفيلم أو المسلسل';return}skeletons();$('#resultCount').textContent='جاري البحث...';
- try{const data=await json(api({action:'search',q}));const raw=Array.isArray(data.data)?data.data:[];const junk=/^(اكوام|إشعارات اكوام|موقع اكوام القديم|web stats)$/i;catalog=raw.filter(x=>safe(x.href)&&!junk.test(String(x.title||'').trim()));render()}catch(e){grid.innerHTML='';$('#resultCount').textContent='تعذر البحث';$('#noticeText').textContent='تعذر تنفيذ البحث الآن. حاول مرة أخرى.';$('#notice').classList.add('show')}
+ try{
+  controller?.abort();controller=new AbortController();const timer=setTimeout(()=>controller.abort(),25000);
+  const requests=Array.from({length:8},(_,i)=>fetch(api({action:'search',q,p:i+1}),{headers:{Accept:'application/json'},signal:controller.signal,cache:'no-store'}).then(async r=>{const d=await r.json();if(!r.ok||d.status==='error')throw new Error(d.message||'فشل البحث');return Array.isArray(d.data)?d.data:[]}));
+  const pages=await Promise.allSettled(requests);clearTimeout(timer);const raw=pages.flatMap(x=>x.status==='fulfilled'?x.value:[]);if(!raw.length&&pages.every(x=>x.status==='rejected'))throw new Error('تعذر البحث');
+  const junk=/^(اكوام|إشعارات اكوام|موقع اكوام القديم|web stats)$/i,seen=new Set();catalog=raw.filter(x=>{const href=safe(x.href);if(!href||junk.test(String(x.title||'').trim())||seen.has(href))return false;seen.add(href);return true});render()
+ }catch(e){grid.innerHTML='';$('#resultCount').textContent='تعذر البحث';$('#noticeText').textContent='تعذر تنفيذ البحث الآن. حاول مرة أخرى.';$('#notice').classList.add('show')}
 }
 function go(route){if(location.hash!==`#/${route}`)location.hash=`#/${route}`;else applyRoute()}
 function applyRoute(){
@@ -85,7 +90,7 @@ function showDetail(data,item){const title=data.movie_title||item.title||'بدو
 async function openEpisode(link){const item={title:'الحلقة',href:link};await openItem(item)}
 function closeModal(fromPop=false){$('#modal').classList.remove('open');document.body.style.overflow='';$('#detail').innerHTML='';if(!fromPop&&location.hash==='#watch')history.back()}
 window.addEventListener('popstate',()=>{if($('#modal').classList.contains('open'))closeModal(true)});$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
-$('#search').addEventListener('input',e=>{clearTimeout(searchTimer);if(currentRoute==='search')searchTimer=setTimeout(()=>runSearch(e.target.value),420);else render()});document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{const f=c.dataset.filter;if(f==='movies'||f==='series')go(f);else loadCatalog(f)});$('#heroPlay').onclick=()=>heroItem?openItem(heroItem):go('movies');
+$('#search').addEventListener('input',e=>{clearTimeout(searchTimer);if(currentRoute!=='search')go('search');searchTimer=setTimeout(()=>runSearch(e.target.value),420)});document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{const f=c.dataset.filter;if(f==='movies'||f==='series')go(f);else loadCatalog(f)});$('#heroPlay').onclick=()=>heroItem?openItem(heroItem):go('movies');
 window.addEventListener('hashchange',()=>{if(!location.hash.startsWith('#watch'))applyRoute()});if(!location.hash)history.replaceState({},'','#/home');applyRoute();
 </script>
 </body>
