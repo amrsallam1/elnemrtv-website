@@ -95,7 +95,7 @@ async function openEpisode(link){const item={title:'الحلقة',href:link};awa
 function closeModal(fromPop=false){$('#modal').classList.remove('open');document.body.style.overflow='';$('#detail').innerHTML='';if(!fromPop&&location.pathname==='/watch')history.back()}
 window.addEventListener('popstate',()=>{if($('#modal').classList.contains('open'))closeModal(true)});$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
 $('#search').addEventListener('input',e=>{clearTimeout(searchTimer);if(currentRoute!=='search')go('search');searchTimer=setTimeout(()=>runSearch(e.target.value),420)});document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{const f=c.dataset.filter;if(f==='movies'||f==='series')go(f);else loadCatalog(f)});$('#heroPlay').onclick=()=>heroItem?openItem(heroItem):go('movies');
-window.addEventListener('hashchange',()=>{if(!location.hash.startsWith('#watch'))applyRoute()});window.addEventListener('popstate',()=>{if(location.pathname!=='/watch'&&!location.hash.startsWith('#watch'))applyRoute()});if(!location.hash)history.replaceState({},'','#/home');applyRoute();
+window.addEventListener('hashchange',()=>{if(!location.hash.startsWith('#watch'))applyRoute()});window.addEventListener('popstate',()=>{if(location.pathname!=='/watch'&&!location.hash.startsWith('#watch'))applyRoute()});if(location.pathname==='/watch'){const u=new URLSearchParams(location.search).get('url');if(u)setTimeout(()=>openItem({href:u,title:'جاري التحميل'}),0)}else{if(!location.hash)history.replaceState({},'','#/home');applyRoute();}
 </script>
 </body>
 </html>
